@@ -25,7 +25,7 @@ class PanGan(object):
                 self.ms_img=tf.placeholder(dtype=tf.float32, shape=(batch_size,ms_size, ms_size, num_spectrum), name='ms_placeholder')
                 self.ms_img_=tf.image.resize_images(images=self.ms_img, size=[pan_size, pan_size],
                                                                method=2)
-                self.pan_img_hp=self.high_pass_2(self.pan_img, 'pan')##2019-11-17
+                self.pan_img_hp=self.high_pass_1(self.pan_img, 'pan')
                 self.pan_img_4=self.AddChannel(self.pan_img)
                 #self.ms_img_hp=self.high_pass(self.ms_img, 'ms')
             with tf.name_scope('PanSharpening'):
@@ -33,18 +33,12 @@ class PanGan(object):
                 #self.PanSharpening_img_blur=self.blur(self.PanSharpening_img,7)
                 self.PanSharpening_img_=tf.image.resize_images(images=self.PanSharpening_img, size=[ms_size, ms_size],
                                                                method=tf.image.ResizeMethod.BILINEAR)
-
-                self.PanSharpening_img_pan=tf.reshape(tf.reduce_mean(self.PanSharpening_img, axis=3), (batch_size, pan_size, pan_size, 1))
-                #self.PanSharpening_img_hp=self.high_pass_1(self.PanSharpening_img)11-17
-
-                self.PanSharpening_img_hp = self.high_pass_2(self.PanSharpening_img_pan)##2019-11-17
+                self.PanSharpening_img_hp=self.high_pass_1(self.PanSharpening_img)
             
             with tf.name_scope('d_loss'):
                 with tf.name_scope('spatial_loss'):
-                    #spatial_pos=self.spatial_discriminator(self.pan_img_4, reuse=False)11-17
-                    spatial_pos = self.spatial_discriminator(self.pan_img, reuse=False)
-                    #spatial_neg=self.spatial_discriminator(self.PanSharpening_img, reuse=True)11-17
-                    spatial_neg = self.spatial_discriminator(self.PanSharpening_img_pan, reuse=True)
+                    spatial_pos=self.spatial_discriminator(self.pan_img_4, reuse=False)
+                    spatial_neg=self.spatial_discriminator(self.PanSharpening_img, reuse=True)
                     # spatial_pos_loss= tf.reduce_mean(tf.square(spatial_pos-tf.random_uniform(shape=[self.batch_size,1],minval=0.7,maxval=1.2)))
                     # spatial_neg_loss= tf.reduce_mean(tf.square(spatial_neg-tf.random_uniform(shape=[self.batch_size,1],minval=0,maxval=0.3)))
                     spatial_pos_loss= tf.reduce_mean(tf.square(spatial_pos-tf.ones(shape=[batch_size,1], dtype=tf.float32)))
@@ -69,14 +63,12 @@ class PanGan(object):
                 g_spatital_loss= tf.reduce_mean(tf.square(self.PanSharpening_img_hp-self.pan_img_hp))
                 #g_spatital_loss= tf.reduce_mean(tf.reduce_sum(tf.sqrt(tf.reduce_sum(tf.square(self.PanSharpening_img_hp-self.pan_img_hp),2)),1))
                 tf.summary.scalar('g_spatital_loss', g_spatital_loss)
-                g_spectrum_loss=tf.reduce_mean(tf.square(self.PanSharpening_img-self.ms_img_))####2019-11-19 改成大size
+                g_spectrum_loss=tf.reduce_mean(tf.square(self.PanSharpening_img_-self.ms_img))
                 #g_spectrum_loss=0.5*tf.reduce_mean(tf.reduce_sum(tf.square(self.PanSharpening_img_-self.ms_img),[2,3]))
                 tf.summary.scalar('g_spectrum_loss', g_spectrum_loss)
-                self.g_loss= 5*spatial_loss_ad + spectrum_loss_ad+5*g_spatital_loss + g_spectrum_loss
+                #self.g_loss= 5*spatial_loss_ad + spectrum_loss_ad+5*g_spatital_loss + g_spectrum_loss
                 #self.g_loss= (spectrum_loss_ad+spatial_loss_ad) + 1000*(g_spatital_loss + 5*g_spectrum_loss)
-                #self.g_loss=g_spatital_loss+5*g_spectrum_loss
-                #self.g_loss=500*(5*g_spatital_loss + g_spectrum_loss) + 0.5*spatial_loss_ad
-                #self.g_loss=500*(g_spatital_loss+g_spectrum_loss)#+spectrum_loss_ad#+spatial_loss_ad++#2019-11-17
+                self.g_loss=g_spatital_loss + g_spectrum_loss
                 tf.summary.scalar('g_loss', self.g_loss)
                 
             # with tf.name_scope('valid_error'):
@@ -88,15 +80,15 @@ class PanGan(object):
             with tf.name_scope('input'):
                 # self.pan_img=tf.placeholder(dtype=tf.float32, shape=(batch_size, pan_size, pan_size, 1), name='pan_placeholder')
                 # self.ms_img=tf.placeholder(dtype=tf.float32, shape=(batch_size,ms_size, ms_size, num_spectrum), name='ms_placeholder')
-                self.pan_img=tf.placeholder(dtype=tf.float32, shape=(batch_size,128, 128, 1), name='pan_placeholder')
-                self.ms_img=tf.placeholder(dtype=tf.float32, shape=(batch_size,32, 32, num_spectrum), name='ms_placeholder')
+                self.pan_img=tf.placeholder(dtype=tf.float32, shape=(batch_size,None, None, 1), name='pan_placeholder')
+                self.ms_img=tf.placeholder(dtype=tf.float32, shape=(batch_size,None, None, num_spectrum), name='ms_placeholder')
             self.PanSharpening_img=self.PanSharpening_model_dense(self.pan_img, self.ms_img)
             #self.PanSharpening_img_blur=self.blur(self.PanSharpening_img,7)
-            self.PanSharpening_img_=tf.image.resize_images(images=self.PanSharpening_img, size=[32, 32],
-                                                               method=tf.image.ResizeMethod.BILINEAR)
+            # self.PanSharpening_img_=tf.image.resize_images(images=self.PanSharpening_img, size=[32, 32],
+                                                               # method=tf.image.ResizeMethod.BILINEAR)
             PanSharpening_img_hp=self.high_pass_1(self.PanSharpening_img)
             pan_img_hp=self.high_pass_1(self.pan_img, 'pan')
-            self.g_spectrum_loss=tf.reduce_mean(tf.square(self.PanSharpening_img_-self.ms_img))
+            self.g_spectrum_loss=tf.reduce_mean(tf.square(self.PanSharpening_img-self.ms_img))
             self.g_spatial_loss=tf.reduce_mean(tf.square(PanSharpening_img_hp-pan_img_hp))
 
     def train(self):
@@ -116,8 +108,7 @@ class PanGan(object):
 
     def PanSharpening_model_dense(self,pan_img, ms_img):
         with tf.variable_scope('Pan_model'):
-            #if self.is_training:
-            if True:
+            if self.is_training:
                 with tf.name_scope('upscale'):
                     # de_weight=tf.get_variable('de_weight', [3,3,self.num_spectrum, self.num_spectrum],
                                             # initializer=tf.truncated_normal_initializer(stddev=1e-3) )
@@ -258,7 +249,7 @@ class PanGan(object):
     def spatial_discriminator(self,img_hp,reuse=False):
         with tf.variable_scope('spatial_discriminator', reuse=reuse):
             with tf.variable_scope('layer_1'):
-                weights = tf.get_variable("w_1", [3, 3, 1, 16],
+                weights = tf.get_variable("w_1", [3, 3, 4, 16],
                                           initializer=tf.truncated_normal_initializer(stddev=1e-3))
                 bias = tf.get_variable("b_1", [16], initializer=tf.constant_initializer(0.0))
                 conv1_spatial = tf.nn.conv2d(img_hp, weights, strides=[1, 2, 2, 1], padding='SAME') + bias
@@ -399,24 +390,13 @@ class PanGan(object):
                 input=tf.concat([input,img],axis=-1)
             img=input
         blur_kerel=np.zeros(shape=(3,3,4,4), dtype=np.float32)
-        value=np.array([[1.,1.,1.],[1.,-8.,1.],[1.,1.,1.]])
+        value=np.array([[0.,1.,0.],[1.,-4.,1.],[0.,1.,0.]])
         for i in range(4):
             blur_kerel[:,:,i,i]=value
         img_hp=tf.nn.conv2d(img,tf.convert_to_tensor(blur_kerel),strides=[1,1,1,1], padding='SAME')
-        img_hp=tf.reshape(tf.reduce_mean(img_hp,3),[self.batch_size,128,128,1])
-        #img_hp=img-img_lp
-        return tf.abs(img_hp)
-
-    ####2019-11-17
-    def high_pass_2(self, img, type='PanSharepening'):
-
-        blur_kerel=np.zeros(shape=(3,3,1,1), dtype=np.float32)
-        value=np.array([[1.,1.,1.],[1.,-8.,1.],[1.,1.,1.]])
-        blur_kerel[:,:,0,0]=value
-        img_hp=tf.nn.conv2d(img,tf.convert_to_tensor(blur_kerel),strides=[1,1,1,1], padding='SAME')
         #img_hp=tf.reshape(tf.reduce_mean(img_hp,3),[self.batch_size,128,128,1])
         #img_hp=img-img_lp
-        return img_hp
+        return tf.abs(img_hp)
         
     def generate_Gauss(self,kernel_size,gaussian_variance=1):
         x = np.arange(0, kernel_size, 1, float)
@@ -434,3 +414,5 @@ class PanGan(object):
         for i in range(self.num_spectrum-1):
             input=tf.concat([input,x],axis=-1)
         return input
+        
+

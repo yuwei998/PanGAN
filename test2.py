@@ -32,14 +32,14 @@ tf.app.flags.DEFINE_string('ratio',
                            default_value=4,
                            docstring='pan image/ms img')
 tf.app.flags.DEFINE_string('model_path',
-                           default_value='./model_11_25-spectral/Generator-208500',
+                           default_value='./model/qk/Generator-107000',
 
                            docstring='pan image/ms img') 
 tf.app.flags.DEFINE_string('test_path',
                            default_value='./data/test_gt',
                            docstring='test img data')                            
 tf.app.flags.DEFINE_string('result_path',
-                           default_value='./result_11_25_spectral',
+                           default_value='./result',
                            docstring='result img')                          
 tf.app.flags.DEFINE_string('norm',
                            default_value=True,

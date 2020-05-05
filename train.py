@@ -48,7 +48,7 @@ def main(argv):
         sess.run(init_op)
 
         if FLAGES.is_pretrained:
-            saver.restore(sess, './model_11_19_qk-spectrum/PanNet-186500')
+            saver.restore(sess, './model/qk/PanNet-107000')
         for training_itr in range(FLAGES.iters):
             t1 = time.time()
             pan_batch, ms_batch=next(DataGenerator)
